@@ -5,7 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Home</title>
     <link rel="stylesheet" href="style.css">
-    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    
+
+<link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
 </head>
 <body>
 
@@ -25,8 +27,8 @@
     <!-- Brand Logo (Perfectly Centered) -->
     <!-- Brand Logo (Perfectly Centered) -->
 <!-- Brand Logo (Perfectly Centered) -->
-<div class="header-brand" id="home-brand" style="position:absolute; left:50%; transform:translateX(-50%); display:flex; align-items:center; gap:5px; font-weight:bold; font-size:18px; color:var(--primary);">
-    <img src="Images/Accendro Logo.png" style="height: 32px; width: auto; object-fit: contain;"> Accendro
+<div class="header-brand" id="home-brand" style="position:absolute; left:50%; transform:translateX(-50%); display:flex; align-items:center; gap:5px; font-weight:bold; font-size:18px; color: black;">
+    <img src="Images/LOGO.png" style="height: 40px; width: auto; object-fit: contain; filter: drop-shadow(2px 2px 5px rgba(0,0,0,0.4));">
 </div>
     
     <!-- Search Icon (Pushed to Right) -->
@@ -53,6 +55,9 @@
     <div class="sort-item">Popularity</div>
     <div class="sort-item" id="sort-price-btn">Price <i class="ri-expand-up-down-line" id="price-icon"></i></div>
 </div>
+
+<!-- NEW: BREADCRUMB / MAP ARC CONTAINER -->
+<div id="breadcrumb-container" style="display:none; padding: 10px 15px; font-size: 13px; background: var(--white); align-items: center; gap: 8px; margin-bottom: 5px; border-bottom: 1px solid var(--border);"></div>
 
     <!-- THIS IS THE EMPTY BOX FOR JAVASCRIPT -->
     <div class="product-grid" id="grid">
@@ -81,6 +86,7 @@
 <script>
     let allProducts = [];
 let currentProducts =[];
+let baseFilteredProducts =[];
 let priceSortDir = 'none';
 
 // --- INFINITE SCROLL VARIABLES ---
@@ -137,15 +143,15 @@ async function initShop() {
     const inStockProducts = fetchedProducts.filter(p => p.in_stock === true && !String(p.type).toLowerCase().includes('banner') && !String(p.id).toLowerCase().includes('banner'));
     allProducts = interleaveProducts(inStockProducts);
     currentProducts = [...allProducts];
+    baseFilteredProducts = [...allProducts]; // NEW: Set initial base state
     
     renderSidebarMenu();
     
-    // --- NEW: RESTORE STATE FROM SESSION MEMORY ---
-    const savedScroll = sessionStorage.getItem('homeScrollPos');
-    const savedCount = sessionStorage.getItem('homeRenderCount');
-    const savedSearch = sessionStorage.getItem('homeSearchTerm');
+    // RESTORE STATE FROM SESSION MEMORY
+    const savedScroll = sessionStorage.getItem(STORE_ID + 'homeScrollPos');
+    const savedCount = sessionStorage.getItem(STORE_ID + 'homeRenderCount');
+    const savedSearch = sessionStorage.getItem(STORE_ID + 'homeSearchTerm');
     
-    // If returning from a product page, temporarily increase load limit to render everything at once
     if (savedCount) ITEMS_PER_LOAD = parseInt(savedCount);
     
     const searchQuery = getUrlParam('search') || savedSearch;
@@ -165,22 +171,27 @@ async function initShop() {
         renderGrid(currentProducts);
     }
     
-    // Snap back to where they were scrolled
     if (savedScroll) {
         setTimeout(() => {
             window.scrollTo({ top: parseInt(savedScroll), behavior: 'instant' });
-        }, 100); // 100ms gives the grid time to render
+        }, 100);
     }
     
-    // Reset limits and clear memory so a manual refresh loads normally
     ITEMS_PER_LOAD = 12; 
-    sessionStorage.removeItem('homeScrollPos');
-    sessionStorage.removeItem('homeRenderCount');
-    sessionStorage.removeItem('homeSearchTerm');
+    sessionStorage.removeItem(STORE_ID + 'homeScrollPos');
+    sessionStorage.removeItem(STORE_ID + 'homeRenderCount');
+    sessionStorage.removeItem(STORE_ID + 'homeSearchTerm');
     
     setupEventListeners();
 }
 
+
+
+
+// --- 3. SIDEBAR LOGIC ---
+// --- 3. SIDEBAR LOGIC ---
+// --- 3. SIDEBAR LOGIC ---
+// --- 3. SIDEBAR LOGIC ---
 // --- 3. SIDEBAR LOGIC ---
 function renderSidebarMenu() {
     let typesMap = {};
@@ -204,7 +215,7 @@ function renderSidebarMenu() {
                 All Products
             </div>`;
     
-    for (const[type, subTypes] of Object.entries(typesMap)) {
+    for (const [type, subTypes] of Object.entries(typesMap)) {
         html += `
         <div class="menu-category" style="display:flex; justify-content:space-between; align-items:center;">
             <span onclick="filterByType('${type}', null, this.parentElement)" style="flex-grow:1;">${type}</span>
@@ -215,13 +226,69 @@ function renderSidebarMenu() {
         html += `</div>`;
     }
     
-    html += `</div><div style="margin-top:auto; border-top:1px solid #eee; padding-top:15px;">
-             <p style="color:#666; font-size:15px; cursor:pointer; font-weight:500;"><i class="ri-information-line"></i> About Us</p>
-             </div>`;
+    html += `</div>`; // Close scrollable div
+    
+    // --- DYNAMIC MINIMALIST ICONS FROM GLOBAL.JS ---
+    let socialHtml = '';
+    
+    // Logic: Only add the anchor tag if the link is not empty in global.js
+    if (typeof LINK_FACEBOOK !== 'undefined' && LINK_FACEBOOK) {
+        socialHtml += `<a href="${LINK_FACEBOOK}" target="_blank" style="color:#666; text-decoration:none;"><i class="ri-facebook-circle-line" style="font-size:18px; vertical-align:middle;"></i></a>`;
+    }
+    if (typeof LINK_YOUTUBE !== 'undefined' && LINK_YOUTUBE) {
+        socialHtml += `<a href="${LINK_YOUTUBE}" target="_blank" style="color:#666; text-decoration:none;"><i class="ri-youtube-line" style="font-size:18px; vertical-align:middle;"></i></a>`;
+    }
+    if (typeof LINK_TIKTOK !== 'undefined' && LINK_TIKTOK) {
+        socialHtml += `<a href="${LINK_TIKTOK}" target="_blank" style="color:#666; text-decoration:none;"><i class="ri-tiktok-line" style="font-size:18px; vertical-align:middle;"></i></a>`;
+    }
+    if (typeof LINK_PHONE !== 'undefined' && LINK_PHONE) {
+        socialHtml += `<a href="tel:${LINK_PHONE}" style="color:#666; text-decoration:none;"><i class="ri-phone-line" style="font-size:18px; vertical-align:middle;"></i></a>`;
+    }
+    if (typeof LINK_EMAIL !== 'undefined' && LINK_EMAIL) {
+        socialHtml += `<a href="mailto:${LINK_EMAIL}" style="color:#666; text-decoration:none;"><i class="ri-mail-line" style="font-size:18px; vertical-align:middle;"></i></a>`;
+    }
+    if (typeof LINK_MAPS !== 'undefined' && LINK_MAPS) {
+        socialHtml += `<a href="${LINK_MAPS}" target="_blank" style="color:#666; text-decoration:none;"><i class="ri-map-pin-line" style="font-size:18px; vertical-align:middle;"></i></a>`;
+    }
+    
+    if (socialHtml !== '') {
+        html += `
+        <div style="margin-top:auto; border-top:1px solid #eee; padding-top:15px; padding-bottom:10px;">
+             <div style="display:flex; flex-direction:row; gap:12px; flex-wrap:wrap; justify-content:flex-start; align-items:center;">
+                 ${socialHtml}
+             </div>
+        </div>`;
+    }
+    
     sidebar.innerHTML = html;
 }
 
-function filterByType(type, subType = null, clickedElement = null) {
+// --- NEW: RESET HOME VIEW FUNCTION ---
+function resetHomeView() {
+    // 1. Remove highlight from all sidebar elements
+    document.querySelectorAll('.menu-category, .menu-category span, .sub-menu p').forEach(el => el.classList.remove('active-cat'));
+    
+    // 2. Highlight "All Products"
+    const allCat = document.getElementById('cat-all');
+    if (allCat) allCat.classList.add('active-cat');
+    
+    // 3. Reset Products
+    currentProducts = [...allProducts];
+    baseFilteredProducts = [...allProducts]; // Restore base state
+    toggleSortBar(false);
+    
+    // 4. Hide Breadcrumb
+    const breadcrumbContainer = document.getElementById('breadcrumb-container');
+    if (breadcrumbContainer) breadcrumbContainer.style.display = 'none';
+    
+    // 5. Redraw Grid
+    renderGrid(currentProducts);
+}
+
+
+
+// --- 3. SIDEBAR & BREADCRUMB LOGIC ---
+function filterByType(type, subType = null, clickedElement = null, isFromSidebar = true) {
     // 1. Remove highlight from all elements
     document.querySelectorAll('.menu-category, .menu-category span, .sub-menu p').forEach(el => el.classList.remove('active-cat'));
     
@@ -229,29 +296,61 @@ function filterByType(type, subType = null, clickedElement = null) {
         // 2. Highlight the clicked element
         clickedElement.classList.add('active-cat');
         
-        // --- NEW: AUTO-OPEN ACCORDION ---
-        // If they clicked a main category (not "All" and not a sub-type), force the accordion open!
+        // AUTO-OPEN ACCORDION
         if (type !== 'All' && !subType && clickedElement.classList.contains('menu-category')) {
             clickedElement.classList.add('open');
         }
     }
     
-    // 3. Filter the products
+    const breadcrumbContainer = document.getElementById('breadcrumb-container');
+    
+    // 3. Filter the products & Build Breadcrumb
     if (type === 'All') {
         currentProducts = [...allProducts];
+        baseFilteredProducts = [...allProducts]; // Save current category base state
         toggleSortBar(false);
+        if (breadcrumbContainer) breadcrumbContainer.style.display = 'none';
     } else if (subType) {
         currentProducts = allProducts.filter(p => p.type === type && p.sub_type === subType);
+        baseFilteredProducts =[...currentProducts]; // Save current category base state
         toggleSortBar(true);
+        
+        if (breadcrumbContainer) {
+            breadcrumbContainer.style.display = 'flex';
+            breadcrumbContainer.innerHTML = `
+                <i class="ri-home-5-line" style="cursor:pointer; font-size:16px; color:var(--primary);" onclick="resetHomeView()"></i>
+                <i class="ri-arrow-right-s-line" style="color:#aaa;"></i>
+                <span style="cursor:pointer; color:#666;" onclick="filterByType('${type}', null, null, false)">${type}</span>
+                <i class="ri-arrow-right-s-line" style="color:#aaa;"></i>
+                <span style="font-weight:bold; color:var(--primary);">${subType}</span>
+            `;
+        }
     } else {
         currentProducts = allProducts.filter(p => p.type === type);
+        baseFilteredProducts = [...currentProducts]; // Save current category base state
         toggleSortBar(true);
+        
+        if (breadcrumbContainer) {
+            breadcrumbContainer.style.display = 'flex';
+            breadcrumbContainer.innerHTML = `
+                <i class="ri-home-5-line" style="cursor:pointer; font-size:16px; color:var(--primary);" onclick="resetHomeView()"></i>
+                <i class="ri-arrow-right-s-line" style="color:#aaa;"></i>
+                <span style="font-weight:bold; color:var(--primary);">${type}</span>
+            `;
+        }
     }
     
-    // 4. Redraw the grid and close the sidebar
+    // 4. Redraw the grid
     renderGrid(currentProducts);
-    toggleMenu();
+    
+    // 5. Close sidebar
+    if (isFromSidebar) {
+        const sidebar = document.getElementById('sidebar');
+        if (sidebar && sidebar.classList.contains('active')) toggleMenu();
+    }
 }
+
+
 
 // --- 4. SEARCH & SORT LOGIC ---
 function toggleHomeSearch() {
@@ -284,21 +383,30 @@ function handleSearch(directQuery = null) {
     let query = directQuery || (inputEl ? inputEl.value : "");
     query = query.toLowerCase().trim();
     
+    const breadcrumbContainer = document.getElementById('breadcrumb-container');
+    
     if(!query) {
-        currentProducts = [...allProducts];
+        currentProducts =[...allProducts];
+        baseFilteredProducts = [...allProducts]; // Save base state
         toggleSortBar(false);
+        if(breadcrumbContainer) breadcrumbContainer.style.display = 'none';
         renderGrid(currentProducts);
         return;
     }
 
+    if(breadcrumbContainer) breadcrumbContainer.style.display = 'none'; 
     toggleSortBar(true);
+    
     const queryTerms = query.split(' ').filter(t => t); 
     currentProducts = allProducts.filter(p => {
         const searchableString = `${p.name} ${(p.tags).join(' ')} ${(p.keywords).join(' ')} ${p.type} ${p.sub_type}`.toLowerCase();
         return queryTerms.every(term => isCloseMatch(term, searchableString));
     });
+    
+    baseFilteredProducts = [...currentProducts]; // Save search results base state
     renderGrid(currentProducts);
 }
+
 
 function handleSort(sortType, clickedElement) {
     document.querySelectorAll('.sort-item').forEach(btn => btn.classList.remove('active'));
@@ -308,25 +416,20 @@ function handleSort(sortType, clickedElement) {
     
     if (sortType === 'best_match') { 
         priceSortDir = 'none';
-        const inputEl = document.getElementById('home-search-val');
-        let query = inputEl ? inputEl.value.trim().toLowerCase() : "";
-        if (query) {
-            const queryTerms = query.split(' ').filter(t => t); 
-            currentProducts = allProducts.filter(p => {
-                const searchableString = `${p.name} ${(p.tags).join(' ')} ${(p.keywords).join(' ')} ${p.type} ${p.sub_type}`.toLowerCase();
-                return queryTerms.every(term => isCloseMatch(term, searchableString));
-            });
-        } else {
-            currentProducts = [...allProducts];
-        }
+        // FIX: Restore products from the currently active category/search filter, NOT all products
+        currentProducts = [...baseFilteredProducts]; 
     }
-    else if (sortType === 'sales') { currentProducts.sort((a, b) => (b.sold || 0) - (a.sold || 0)); priceSortDir = 'none'; }
+    else if (sortType === 'sales') { 
+        currentProducts.sort((a, b) => (b.sold || 0) - (a.sold || 0)); 
+        priceSortDir = 'none'; 
+    }
     else if (sortType === 'price') {
         if (priceSortDir === 'asc') { currentProducts.sort((a, b) => b.price - a.price); priceSortDir = 'desc'; priceIcon.className = 'ri-arrow-down-line'; } 
         else { currentProducts.sort((a, b) => a.price - b.price); priceSortDir = 'asc'; priceIcon.className = 'ri-arrow-up-line'; }
     }
     renderGrid(currentProducts);
 }
+
 
 // --- 5. GRID DRAWING & INFINITE SCROLLING ---
 // --- 5. GRID DRAWING & SMART IMAGE LOADING ---
@@ -363,8 +466,8 @@ function renderGrid(productsToDraw, append = false) {
                     <div class="p-title">${p.name}</div>
                     <div style="display:flex; justify-content:space-between; align-items:flex-end;">
                         <div>
-                            <span class="p-price">৳ ${p.price}</span>
-                            ${p.original_price ? `<span class="p-old-price">৳ ${p.original_price}</span>` : ''}
+                            <span class="p-price">BDT ${p.price}</span>
+                            ${p.original_price ? `<span class="p-old-price">BDT ${p.original_price}</span>` : ''}
                         </div>
                         ${p.show_sold && p.sold > 0 ? `<div style="font-size:10px; color:#888;">${p.sold} sold</div>` : ''}
                     </div>
@@ -390,36 +493,40 @@ window.addEventListener('scroll', () => {
 // --- 6. SAVE STATE BEFORE LEAVING PAGE ---
 // This is the magic that remembers your scroll position when you click a product!
 window.addEventListener('beforeunload', () => {
-    sessionStorage.setItem('homeScrollPos', window.scrollY);
-    sessionStorage.setItem('homeRenderCount', renderedCount);
+    sessionStorage.setItem(STORE_ID + 'homeScrollPos', window.scrollY);
+    sessionStorage.setItem(STORE_ID + 'homeRenderCount', renderedCount);
     const searchInput = document.getElementById('home-search-val');
     if (searchInput && searchInput.value) {
-        sessionStorage.setItem('homeSearchTerm', searchInput.value);
+        sessionStorage.setItem(STORE_ID + 'homeSearchTerm', searchInput.value);
     }
 });
 
 // --- 6. EVENT LISTENERS (FINAL FIXED HOME BUTTON) ---
+// --- 6. EVENT LISTENERS (FINAL FIXED HOME BUTTON) ---
 function setupEventListeners() {
     const homeSearch = document.getElementById('home-search-val');
-    if(homeSearch) homeSearch.addEventListener('keyup', (e) => { if (e.key === 'Enter') handleSearch(); });
+    if (homeSearch) homeSearch.addEventListener('keyup', (e) => { if (e.key === 'Enter') handleSearch(); });
     
     const btns = document.querySelectorAll('.sort-item');
-    if(btns.length >= 3) {
+    if (btns.length >= 3) {
         btns[0].addEventListener('click', function() { handleSort('best_match', this); });
         btns[1].addEventListener('click', function() { handleSort('sales', this); });
         btns[2].addEventListener('click', function() { handleSort('price', this); });
     }
-
-    // FIX: Make the Home button scroll to top instead of reloading and triggering the save-state
+    
+    // FIX: Make the Home button scroll to top AND reset category filtering
     const homeNavBtn = document.querySelector('.bottom-nav a[href="index.html"]');
     if (homeNavBtn) {
         homeNavBtn.addEventListener('click', (e) => {
             e.preventDefault(); // Stop the page from reloading
             window.scrollTo({ top: 0, behavior: 'smooth' }); // Smoothly glide to the top
             
-            // Optional: If they were searching, clear the search and reset the grid
+            // RESET categories and breadcrumbs
+            resetHomeView();
+            
+            // If they were searching, clear the search and reset the grid completely
             if (homeSearch && homeSearch.value) {
-                toggleHomeSearch(); // Closes search box and resets grid
+                toggleHomeSearch();
             }
         });
     }
@@ -434,9 +541,6 @@ initShop();
         document.querySelector('.sidebar-overlay').classList.toggle('active');
     }
 </script>
-<!-- TEST METHOD 2: LAZY LOADED FACEBOOK CHAT PLUGIN -->
-<div id="fb-root"></div>
-<div id="fb-customer-chat" class="fb-customerchat"></div>
 
 </body>
 </html>

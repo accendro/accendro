@@ -8,7 +8,7 @@
     <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
 </head>
 <body>
-
+    
     <!-- Search Inline Header -->
 <div class="top-header">
     <a href="index.html"><i class="ri-arrow-left-line menu-btn"></i></a>
@@ -154,6 +154,9 @@ let comboSelections =[]; // Will hold an array of {color, size} for each item in
 // --- 1. FULL INITIALIZATION FUNCTION (UPDATED FOR COMBOS) ---
 // --- 1. FULL INITIALIZATION FUNCTION (WITH RICH TEXT DESCRIPTION) ---
 // --- 1. FULL INITIALIZATION FUNCTION (UPDATED COMBO UI) ---
+// --- 1. FULL INITIALIZATION FUNCTION (WITH VIEWCONTENT PIXEL) ---
+// --- 1. FULL INITIALIZATION FUNCTION (WITH COD & DYNAMIC DELIVERY) ---
+// --- 1. FULL INITIALIZATION FUNCTION (WITH GLOBAL DELIVERY VARS) ---
 async function loadDetails() {
     let products =[];
     const MAX_RETRIES = 3;       
@@ -209,8 +212,8 @@ async function loadDetails() {
     }
     
     document.querySelector('.detail-title').innerText = currentProduct.name;
-    const oldPriceHtml = currentProduct.original_price ? `<span class="p-old-price">৳ ${currentProduct.original_price}</span>` : '';
-    document.querySelector('.detail-price').innerHTML = `৳ ${currentProduct.price} ${oldPriceHtml}`;
+    const oldPriceHtml = currentProduct.original_price ? `<span class="p-old-price">BDT ${currentProduct.original_price}</span>` : '';
+    document.querySelector('.detail-price').innerHTML = `BDT ${currentProduct.price} ${oldPriceHtml}`;
     
     const modalTitleEl = document.getElementById('modal-title');
     if (modalTitleEl) modalTitleEl.innerText = currentProduct.name;
@@ -218,16 +221,38 @@ async function loadDetails() {
     // --- WHATSAPP-STYLE RICH TEXT FORMATTER ---
     let rawDesc = currentProduct.description ? String(currentProduct.description) : 'No description available.';
     const formattedDesc = rawDesc
-        .replace(/\n/g, '<br>')                               // Line breaks
-        .replace(/\*\*(.*?)\*\*/g, '<b>$1</b>')               // **Bold**
-        .replace(/\*(.*?)\*/g, '<i>$1</i>')                   // *Italic*
-        .replace(/__(.*?)__/g, '<u>$1</u>')                   // __Underline__
-        .replace(/\^\^(.*?)\^\^/g, '<span style="text-decoration: overline;">$1</span>') // ^^Overline^^
-        .replace(/~~(.*?)~~/g, '<s>$1</s>');                  // ~~Strikethrough~~
+        .replace(/\n/g, '<br>')                               
+        .replace(/\*\*(.*?)\*\*/g, '<b>$1</b>')               
+        .replace(/\*(.*?)\*/g, '<i>$1</i>')                   
+        .replace(/__(.*?)__/g, '<u>$1</u>')                   
+        .replace(/\^\^(.*?)\^\^/g, '<span style="text-decoration: overline;">$1</span>') 
+        .replace(/~~(.*?)~~/g, '<s>$1</s>');                  
         
     document.getElementById('description-info').innerHTML = formattedDesc;
     
-    document.getElementById('delivery-info').innerHTML = `<i class="ri-truck-line"></i> ${calculateDelivery(currentProduct.delivery_days)}`;
+    // PULLS LOC_INSIDE, FEE_INSIDE, ETC. AUTOMATICALLY FROM GLOBAL.JS
+    document.getElementById('delivery-info').innerHTML = `
+        <div style="display:flex; align-items:flex-start; gap:10px;">
+    <i class="ri-hand-coin-line" style="color:#4cd137; font-size:18px; margin-top:-2px;"></i>
+    <span style="font-size:13px; color:#444;"><b>Cash on Delivery Available</b></span>
+</div>
+
+        <div style="display: flex; flex-direction: column; gap: 12px; padding: 5px 0;">
+            <div style="display:flex; align-items:flex-start; gap:10px;">
+                <i class="ri-truck-line" style="color:var(--primary); font-size:18px; margin-top:-2px;"></i>
+                <span style="font-size:13px; color:#444;">${calculateDelivery(currentProduct.delivery_days)}</span>
+            </div>
+            
+            <div style="display:flex; align-items:flex-start; gap:10px;">
+                <i class="ri-map-pin-line" style="color:#ffb03a; font-size:18px; margin-top:-2px;"></i>
+                <span style="font-size:13px; color:#555; line-height: 1.5;">
+                    Delivery Charge:<br>
+                    <b>${LOC_INSIDE}:</b> BDT ${FEE_INSIDE}<br>
+                    <b>${LOC_OUTSIDE}:</b> BDT ${FEE_OUTSIDE}
+                </span>
+            </div>
+        </div>
+    `;
     
     const tagsContainer = document.getElementById('tags-container');
     if (tagsContainer) {
@@ -258,10 +283,7 @@ async function loadDetails() {
             size: hasSizes ? null : 'Default'
         }));
 
-        modalHtml += `<p style="font-size:12px; color:var(--primary); font-weight:bold; margin-bottom:15px; background:#fff0e8; padding:8px; border-radius:4px;">✨ You are building a ${comboCount}-Piece Combo. <br>Select variants for each item below:</p>`;
-
         for (let i = 0; i < comboCount; i++) {
-            // FIX: Stronger border, white background, shadow, and a primary-color left accent border
             modalHtml += `<div style="background:#ffffff; padding:15px; border-radius:8px; margin-bottom:15px; border: 1px solid #ccc; border-left: 4px solid var(--primary); box-shadow: 0 2px 5px rgba(0,0,0,0.05);">`;
             modalHtml += `<p style="font-weight:bold; color:var(--primary); margin-bottom:10px; border-bottom:1px dashed #eee; padding-bottom:5px;">🛍️ Item ${i + 1}</p>`;
             
@@ -337,6 +359,20 @@ async function loadDetails() {
 
     renderSimilarProducts(products, currentProduct);
     syncPriceWithImage(currentProduct.images[0]);
+
+    try {
+        if (typeof fbq === 'function') {
+            fbq('track', 'ViewContent', {
+                content_ids:[currentProduct.id],
+                content_type: 'product',
+                content_name: currentProduct.name,
+                value: currentProduct.price,       
+                currency: 'BDT'
+            });
+        }
+    } catch (e) {
+        console.warn("Pixel tracking blocked by browser.");
+    }
 }
 
 
@@ -363,8 +399,8 @@ function syncPriceWithImage(imgUrl) {
         }
     }
     
-    const oldPriceHtml = currentProduct.original_price ? `<span class="p-old-price">৳ ${currentProduct.original_price}</span>` : '';
-    const priceHtml = `৳ ${currentProduct.price} ${oldPriceHtml}`;
+    const oldPriceHtml = currentProduct.original_price ? `<span class="p-old-price">BDT ${currentProduct.original_price}</span>` : '';
+    const priceHtml = `BDT ${currentProduct.price} ${oldPriceHtml}`;
     
     // Update main product page price
     const priceEl = document.querySelector('.detail-price');
@@ -372,7 +408,7 @@ function syncPriceWithImage(imgUrl) {
     
     // Update the Modal Price
     const modalPriceEl = document.getElementById('modal-price');
-    if (modalPriceEl) modalPriceEl.innerHTML = `৳ ${currentProduct.price}`;
+    if (modalPriceEl) modalPriceEl.innerHTML = `BDT ${currentProduct.price}`;
     
     // NEW: Update the Modal Thumbnail Image
     const modalThumbEl = document.getElementById('modal-thumb');
@@ -613,7 +649,7 @@ function renderSimilarProducts(allProds, currProd) {
     similar.forEach((p, index) => {
         const cardHtml = `<a href="product.html?id=${p.id}" class="product-card">
             <img src="${p.images[0]}" alt="${p.name}">
-            <div class="p-details"><div class="p-title">${p.name}</div><div><span class="p-price">৳ ${p.price}</span></div></div>
+            <div class="p-details"><div class="p-title">${p.name}</div><div><span class="p-price">BDT ${p.price}</span></div></div>
         </a>`;
         if (index % 2 === 0) leftColHtml += cardHtml; else rightColHtml += cardHtml;
     });
@@ -629,6 +665,7 @@ function renderSimilarProducts(allProds, currProd) {
 // ==========================================
 // --- UPDATED: CART CONFIRMATION (Bundles all images for the Google Sheet) ---
 // --- UPDATED: CART CONFIRMATION (Raw URLs only for Google Sheet) ---
+// --- UPDATED: CART CONFIRMATION (RAW URLS & ADD-TO-CART PIXEL) ---
 function confirmSelection() {
     let finalVariantToCart = selectedVariant;
 
@@ -643,8 +680,8 @@ function confirmSelection() {
         let mergedColorStr = comboSelections.map((c, i) => `[${i+1}] ${c.color.name}`).join(', ');
         let mergedSizeStr = comboSelections.map((c, i) => `[${i+1}] ${c.size}`).join(', ');
         
-        // FIX: Just the raw image URLs, separated by a new line (no "[Item X]" text)
-        let mergedImgsStr = comboSelections.map(c => c.color.img).join('\n\n');
+        // Just the raw image URLs, separated by a new line
+        let mergedImgsStr = comboSelections.map(c => c.color.img).join('\n');
 
         finalVariantToCart = {
             color: { 
@@ -668,12 +705,37 @@ function confirmSelection() {
 
     addToCart(currentProduct, finalVariantToCart);
 
-    if (currentAction === 'buy') {
-        window.location.href = 'checkout.html';
-    } else {
-        showToast("Added to Cart Successfully!", true);
-        closeModal();
+    // ==========================================
+    // 🚀 NEW: META PIXEL - TRACK ADD TO CART
+    // ==========================================
+    // ==========================================
+// 🚀 NEW: META PIXEL - TRACK ADD TO CART
+// ==========================================
+try {
+    if (typeof fbq === 'function') {
+        fbq('track', 'AddToCart', {
+            content_name: currentProduct.name,
+            content_ids: [currentProduct.id],
+            content_type: 'product',
+            value: currentProduct.price * finalVariantToCart.qty,
+            currency: 'BDT'
+        });
     }
+} catch (e) {
+    console.warn("Pixel tracking blocked by browser.");
+}
+// ==========================================
+
+// FIX: THE "RACE CONDITION" DELAY
+if (currentAction === 'buy') {
+    // Wait 300ms before leaving the page so the Pixel data can fly to Facebook!
+    setTimeout(() => {
+        window.location.href = 'checkout.html';
+    }, 400);
+} else {
+    showToast("Added to Cart Successfully!", true);
+    closeModal();
+}
 }
 
 // Run on load

@@ -1,15 +1,49 @@
-const DATA_URL = './products.json';
+// 🏬 STORE IDENTITY (Prevents cart mixing between clients!)
+// Change this prefix for each new client (e.g., "ClientA_")
+const STORE_ID = "Accendro_";
+// ==========================================
+
 
 // 👉 IMPORTANT: Paste your exact Google Apps Script URL here!
         const API_URL = "https://script.google.com/macros/s/AKfycbxqLSwta_gqOlZxYyKC1jjg4kd6CguDnj3UKPt10QAI2t9XHLcml3Ikqx8m9A-X08Wd2g/exec";
-        
-        
-// 👉 IMPORTANT  CHANGE THIS FOR EACH CLIENT'Facebook page
-const facebookPageUsername = "FrenzyOutfitBD";
+  
+  
+  
+
+// 🎯 META PIXEL SETTINGS
+const META_PIXEL_ID = "1118804886391852";
+
+
+//  CHANGE THIS FOR EACH CLIENT'Facebook page
+const facebookPageUsername = "accendroo";
+
+
+// 🚚 AGENCY CLIENT DELIVERY SETTINGS
+const LOC_INSIDE = "Inside Dhaka"; // Type in English or Bengali
+const FEE_INSIDE = 100;
+
+const LOC_OUTSIDE = "Outside Dhaka";
+const FEE_OUTSIDE = 150;
+
+
+// ==========================================
+// 📱 About Section SOCIAL & CONTACT LINKS
+// Leave empty ("") if a client doesn't have one!
+// ==========================================
+const LINK_FACEBOOK = "https://www.facebook.com/accendroo/";
+const LINK_YOUTUBE = "";
+const LINK_TIKTOK = "";
+const LINK_PHONE = "01777122287";
+const LINK_EMAIL = "accendro@gmail.com";
+const LINK_MAPS = "";
+// ==========================================
 
 
 
-    
+
+const DATA_URL = './products.json';
+
+
 
 // 1. Fetch JSON Data (UPDATED WITH SMART FORMATTER)
 // 1. Fetch JSON Data (UPDATED WITH STOCK CHECKER)
@@ -83,6 +117,31 @@ async function getProducts() {
     }
 }
 
+
+
+// ==========================================
+// 🚀 DYNAMIC META PIXEL INJECTOR
+// This automatically loads the Pixel using the ID above.
+// ==========================================
+if (typeof META_PIXEL_ID !== 'undefined' && META_PIXEL_ID !== "") {
+    !function(f,b,e,v,n,t,s)
+    {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+    n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+    if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+    n.queue=[];t=b.createElement(e);t.async=!0;
+    t.src=v;s=b.getElementsByTagName(e)[0];
+    s.parentNode.insertBefore(t,s)}(window, document,'script',
+    'https://connect.facebook.net/en_US/fbevents.js');
+    
+    fbq('init', META_PIXEL_ID);
+    fbq('track', 'PageView');
+} else {
+    console.warn("Meta Pixel ID is empty. Tracking disabled.");
+}
+
+
+
+
 // --- NEW: TYPO TOLERANCE (FUZZY SEARCH) ---
 // Calculates how many letters are different between two words
 function getTypoDistance(a, b) {
@@ -120,7 +179,7 @@ function isCloseMatch(typedWord, databaseString) {
 }
 
 function getUrlParam(param) { return new URLSearchParams(window.location.search).get(param); }
-function getCart() { const c = localStorage.getItem('my_cart'); return c ? JSON.parse(c) :[]; }
+function getCart() { const c = localStorage.getItem(STORE_ID + 'my_cart'); return c ? JSON.parse(c) :[]; }
 
 function addToCart(product, variant) {
     let cart = getCart();
@@ -128,7 +187,7 @@ function addToCart(product, variant) {
     if (exist) exist.variant.qty += variant.qty;
     else cart.push({ product, variant });
     
-    localStorage.setItem('my_cart', JSON.stringify(cart));
+    localStorage.setItem(STORE_ID + 'my_cart', JSON.stringify(cart));
     updateCartIcon();
 }
 
@@ -206,7 +265,7 @@ function openMessenger() {
     
     // --- CONTEXT 1: THANK YOU PAGE ---
     if (currentUrl.includes('thankyou.html')) {
-        const orderId = localStorage.getItem('last_order_id');
+        const orderId = localStorage.getItem(STORE_ID + 'last_order_id');
         if (orderId) {
             message = `#WebOrder\n\nহ্যালো! আমি এইমাত্র একটি অর্ডার করেছি।\nআমার অর্ডার আইডি: ${orderId}\n\nআমি আমার অর্ডার সম্পর্কে কিছু জানতে চাচ্ছি।`;
             refParam = `order_${orderId}`;
@@ -214,7 +273,7 @@ function openMessenger() {
     }
     // --- CONTEXT 2: CHECKOUT PAGE ---
     else if (currentUrl.includes('checkout.html')) {
-        const cartText = localStorage.getItem('my_cart');
+        const cartText = localStorage.getItem(STORE_ID + 'my_cart');
         if (cartText) {
             const cart = JSON.parse(cartText);
             if (cart.length > 0) {
@@ -270,3 +329,4 @@ function openMessenger() {
 
 
 document.addEventListener('DOMContentLoaded', updateCartIcon);
+

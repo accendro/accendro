@@ -6,6 +6,7 @@
     <title>Thank You</title>
     <link rel="stylesheet" href="style.css">
     <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    
 </head>
 <body style="background: white;">
 
@@ -53,17 +54,17 @@
 <script>
     document.addEventListener('DOMContentLoaded', () => {
         // 1. Display Phone
-        const phone = localStorage.getItem('order_phone') || "your phone number";
+        const phone = localStorage.getItem(STORE_ID + 'order_phone') || "your phone number";
         const phoneElement = document.getElementById('display-phone');
         if (phoneElement) phoneElement.innerText = phone;
         
         // 2. Display Order ID (NEW)
-        const orderId = localStorage.getItem('last_order_id') || "Unknown";
+        const orderId = localStorage.getItem(STORE_ID + 'last_order_id') || "Unknown";
         const orderIdElement = document.getElementById('display-order-id');
         if (orderIdElement) orderIdElement.innerText = orderId;
         
         // 3. Display Order Summary
-        const lastOrderData = localStorage.getItem('last_order');
+        const lastOrderData = localStorage.getItem(STORE_ID + 'last_order');
         const summaryContainer = document.getElementById('summary-items');
         
         if (lastOrderData && summaryContainer) {
@@ -86,16 +87,16 @@
                 <div style="flex-grow:1;">
                     <div style="font-size:12px; font-weight:bold; color:#333;">${p.name}</div>
                     <div style="font-size:11px; color:#777;">${colorName}, Size: ${v.size}</div>
-                    <div style="font-size:11px; color:var(--primary); font-weight:bold; margin-top:3px;">৳ ${p.price} x ${v.qty}</div>
+                    <div style="font-size:11px; color:var(--primary); font-weight:bold; margin-top:3px;">BDT ${p.price} x ${v.qty}</div>
                 </div>
-                <div style="font-size:13px; font-weight:bold; color:#222;">৳ ${itemTotal}</div>
+                <div style="font-size:13px; font-weight:bold; color:#222;">BDT ${itemTotal}</div>
             </div>`;
             });
             
             html += `
             <div style="display:flex; justify-content:space-between; margin-top:10px; font-size:14px; font-weight:bold;">
                 <span>Total (excl. delivery):</span>
-                <span style="color:var(--primary);">৳ ${total}</span>
+                <span style="color:var(--primary);">BDT ${total}</span>
             </div>
         `;
             summaryContainer.innerHTML = html;
@@ -106,7 +107,7 @@
     
     // --- NEW: COPY TO CLIPBOARD FUNCTION ---
     function copyOrderId() {
-        const orderId = localStorage.getItem('last_order_id');
+        const orderId = localStorage.getItem(STORE_ID + 'last_order_id');
         if (!orderId) return;
         
         // We create a temporary invisible text box to ensure it copies perfectly on both iOS and Android
