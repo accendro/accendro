@@ -416,55 +416,69 @@
 
     // STEADFAST API BOOKING
     async function bookSteadfastOrder() {
-        const order = allOrders.find(o => o.rowIndex === selectedOrderIndex);
-        if (!order) return;
-
-        const btn = document.getElementById('sf-book-btn');
-        const codAmount = document.getElementById('sf-cod-amount').value;
-
-        btn.innerHTML = `<i class="ri-loader-4-line animate-spin text-lg"></i> Booking...`;
-        btn.disabled = true;
-        btn.classList.add('opacity-70');
-
-        const payload = {
-            action: "bookSteadfast",
-            pw: adminPassword,
-            rowIndex: order.rowIndex,
-            orderId: order.Order_ID,
-            customerName: order.Customer_Name,
-            customerPhone: String(order.Phone).replace(/[^0-9]/g, ''),
-            customerAddress: order.Address,
-            codAmount: codAmount,
-            note: order.Order_Note !== "No Note" ? order.Order_Note : ""
-        };
-
-        try {
-            const res = await fetch(API_URL, { method: 'POST', body: JSON.stringify(payload) });
-            const data = await res.json();
-
-            if (data.status === "success") {
-                order.Status = "Shipped";
-                order.Tracking_ID = data.trackingId;
-                
-                document.getElementById('modal-status-select').value = "Shipped";
-                document.getElementById('modal-tracking-id').value = data.trackingId;
-                updateSelectColor();
-                renderOrders();
-
-                btn.innerHTML = `<i class="ri-check-double-line text-lg"></i> Booked Successfully!`;
-                btn.className = "w-full bg-gray-800 text-white rounded-xl py-3 text-xs font-bold uppercase flex items-center justify-center gap-2 mt-2 transition";
-            } else {
-                alert("Steadfast Error: \n" + data.message);
-                btn.innerHTML = `Try Again`;
-            }
-        } catch (err) {
-            alert("Network Error. Please try again.");
-            btn.innerHTML = `Send to Steadfast`;
-        } finally {
-            btn.disabled = false;
-            btn.classList.remove('opacity-70');
-        }
+    const order = allOrders.find(o => o.rowIndex === selectedOrderIndex);
+    if (!order) return;
+    
+    if (order.Tracking_ID && String(order.Tracking_ID).trim() !== "") {
+        alert("This order is already booked to Steadfast!");
+        return;
     }
+    
+    const btn = document.getElementById('sf-book-btn');
+    const codAmount = document.getElementById('sf-cod-amount').value;
+    
+    btn.innerHTML = `<i class="ri-loader-4-line animate-spin text-lg"></i> Booking...`;
+    btn.disabled = true;
+    btn.classList.add('opacity-70');
+    
+    // Create the GET parameters safely
+    const queryParams = new URLSearchParams({
+        action: "bookSteadfast",
+        pw: adminPassword,
+        rowIndex: order.rowIndex,
+        orderId: order.Order_ID || "N/A",
+        customerName: order.Customer_Name || "No Name",
+        customerPhone: String(order.Phone).replace(/[^0-9]/g, ''),
+        customerAddress: order.Address || "No Address",
+        codAmount: codAmount,
+        note: order.Order_Note !== "No Note" ? order.Order_Note : ""
+    });
+    
+    try {
+        // Because this is a GET request, the browser will NOT block it!
+        const res = await fetch(`${API_URL}?${queryParams.toString()}`);
+        const text = await res.text();
+        
+        let data;
+        try {
+            data = JSON.parse(text);
+        } catch (e) {
+            alert("Google Script Error. Did you deploy as New Version?");
+            btn.innerHTML = `Try Again`;
+            return;
+        }
+        
+        if (data.status === "success") {
+            order.Tracking_ID = data.trackingId;
+            document.getElementById('modal-tracking-id').value = data.trackingId;
+            updateSelectColor();
+            autoSaveTrigger(); // Force memory to save
+            
+            let cleanID = String(data.trackingId).replace(/\D/g, '');
+            btn.innerHTML = `<i class="ri-check-double-line text-lg"></i> Booked: CN#${cleanID}`;
+            btn.className = "w-full bg-gray-800 text-white rounded-xl py-3 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition shadow-md pointer-events-none opacity-90";
+        } else {
+            alert("Steadfast Rejected the Order: \n" + data.message);
+            btn.innerHTML = `Try Again`;
+        }
+    } catch (err) {
+        alert("Browser/Network Error:\n" + err.message);
+        btn.innerHTML = `Send to Steadfast`;
+    } finally {
+        btn.disabled = false;
+        btn.classList.remove('opacity-70');
+    }
+}
 
     function parseTimestamp(str) {
         if (!str) return new Date(NaN);
@@ -656,96 +670,111 @@
     }
 
     function openDetails(rowIndex) {
-        const order = allOrders.find(o => o.rowIndex === rowIndex);
-        if(!order) return;
-        selectedOrderIndex = rowIndex;
-
-        document.getElementById('modal-order-id').innerText = order.Order_ID || 'N/A';
-        document.getElementById('modal-name').innerText = order.Customer_Name;
-        document.getElementById('modal-phone').innerText = order.Phone;
-        document.getElementById('modal-address').innerText = order.Address;
-        document.getElementById('modal-subtotal').innerText = order.Subtotal || order.Subtotal_Price || '0';
-        document.getElementById('modal-total').innerText = order.Total_Price || '0';
-        document.getElementById('modal-items').innerHTML = (order.Order_Details || "").replace(/\n/g, '<br>');
-        document.getElementById('modal-ip-text').innerText = order.Security___IP_Info || "No IP Captured";
-
-        // Auto-fill values before rendering the Select Color logic
-        document.getElementById('modal-tracking-id').value = order.Tracking_ID || '';
-        document.getElementById('sf-cod-amount').value = String(order.Total_Price || "0").replace(/[^0-9.]/g, '');
-        
-        // Reset Book Button UI
-        const sfBtn = document.getElementById('sf-book-btn');
-        if(sfBtn) {
+    const order = allOrders.find(o => o.rowIndex === rowIndex);
+    if (!order) return;
+    selectedOrderIndex = rowIndex;
+    
+    document.getElementById('modal-order-id').innerText = order.Order_ID || 'N/A';
+    document.getElementById('modal-name').innerText = order.Customer_Name;
+    document.getElementById('modal-phone').innerText = order.Phone;
+    document.getElementById('modal-address').innerText = order.Address;
+    document.getElementById('modal-subtotal').innerText = order.Subtotal || order.Subtotal_Price || '0';
+    document.getElementById('modal-total').innerText = order.Total_Price || '0';
+    document.getElementById('modal-items').innerHTML = (order.Order_Details || "").replace(/\n/g, '<br>');
+    document.getElementById('modal-ip-text').innerText = order.Security___IP_Info || "No IP Captured";
+    
+    // Auto-fill values before rendering the Select Color logic
+    document.getElementById('modal-tracking-id').value = order.Tracking_ID || '';
+    document.getElementById('sf-cod-amount').value = String(order.Total_Price || "0").replace(/[^0-9.]/g, '');
+    
+    // --- THIS IS THE CLARIFIED SECTION ---
+    // Setup the Steadfast Button UI based on if it's already booked or not
+    const sfBtn = document.getElementById('sf-book-btn');
+    if (sfBtn) {
+        if (order.Tracking_ID && String(order.Tracking_ID).trim() !== "") {
+            // If it already has an ID, show it on the button and make it grey
+            let cleanID = String(order.Tracking_ID).replace(/\D/g, '');
+            sfBtn.innerHTML = `<i class="ri-check-double-line text-lg"></i> Booked: CN#${cleanID}`;
+            sfBtn.className = "w-full bg-gray-800 text-white rounded-xl py-3 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition shadow-md pointer-events-none opacity-90";
+        } else {
+            // Otherwise, show the normal green send button
             sfBtn.innerHTML = `Send to Steadfast`;
             sfBtn.className = "w-full bg-[#2e7d32] text-white rounded-xl py-3 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 active:scale-95 transition shadow-md shadow-green-200";
         }
-
-        let dStr = "Unknown Date";
-        try { 
-            const d = parseTimestamp(order.Timestamp);
-            const time = d.toLocaleString('en-US', {hour:'numeric', minute:'2-digit'});
-            dStr = formatCustomDate(d) + " • " + time; 
-        } catch(e){}
-        document.getElementById('modal-date').innerText = dStr;
-
-        const noteContainer = document.getElementById('modal-note-container');
-        if (order.Order_Note && order.Order_Note !== "No Note" && order.Order_Note.trim() !== "") {
-            document.getElementById('modal-note').innerText = order.Order_Note;
-            noteContainer.classList.remove('hidden');
-        } else { noteContainer.classList.add('hidden'); }
-
-        const dupInfo = getDuplicateInfo(order);
-        const dupWarn = document.getElementById('modal-dup-warning');
-        if (dupInfo.msg) {
-            dupWarn.innerHTML = `<div class="bg-red-50 border border-red-200 text-red-700 p-3 rounded-xl text-xs font-bold flex items-center justify-between gap-2 shadow-sm">
+    }
+    // ------------------------------------
+    
+    let dStr = "Unknown Date";
+    try {
+        const d = parseTimestamp(order.Timestamp);
+        const time = d.toLocaleString('en-US', { hour: 'numeric', minute: '2-digit' });
+        dStr = formatCustomDate(d) + " • " + time;
+    } catch (e) {}
+    document.getElementById('modal-date').innerText = dStr;
+    
+    const noteContainer = document.getElementById('modal-note-container');
+    if (order.Order_Note && order.Order_Note !== "No Note" && order.Order_Note.trim() !== "") {
+        document.getElementById('modal-note').innerText = order.Order_Note;
+        noteContainer.classList.remove('hidden');
+    } else { noteContainer.classList.add('hidden'); }
+    
+    const dupInfo = getDuplicateInfo(order);
+    const dupWarn = document.getElementById('modal-dup-warning');
+    if (dupInfo.msg) {
+        dupWarn.innerHTML = `<div class="bg-red-50 border border-red-200 text-red-700 p-3 rounded-xl text-xs font-bold flex items-center justify-between gap-2 shadow-sm">
                 <span><i class="ri-error-warning-fill text-lg align-middle mr-1"></i> ${dupInfo.msg.toUpperCase()}</span>
                 <span class="bg-red-600 text-white px-2 py-1 rounded text-[9px]">VIEW</span>
             </div>`;
-            dupWarn.onclick = (e) => filterDuplicates(e, dupInfo.searchTarget);
-            dupWarn.classList.remove('hidden');
-        } else { dupWarn.classList.add('hidden'); }
-
-        document.getElementById('modal-status-select').value = order.Status || 'New';
-        document.getElementById('modal-admin-note').value = order.Admin_Note || '';
-
-        const imgs = (order.Image_Links || "").split('\n\n').filter(i => i.trim());
-        document.getElementById('modal-images').innerHTML = imgs.map((img, idx) => `
+        dupWarn.onclick = (e) => filterDuplicates(e, dupInfo.searchTarget);
+        dupWarn.classList.remove('hidden');
+    } else { dupWarn.classList.add('hidden'); }
+    
+    document.getElementById('modal-status-select').value = order.Status || 'New';
+    document.getElementById('modal-admin-note').value = order.Admin_Note || '';
+    
+    const imgs = (order.Image_Links || "").split('\n\n').filter(i => i.trim());
+    document.getElementById('modal-images').innerHTML = imgs.map((img, idx) => `
             <div class="relative shrink-0">
                 <img src="${img}" decoding="async" class="w-24 h-24 object-cover border border-gray-200 rounded-xl cursor-pointer shadow-sm active:opacity-75 transition" onclick="viewImage('${img}')">
                 <span class="absolute top-1 left-1 bg-black/70 text-white text-[10px] font-black rounded-full w-5 h-5 flex items-center justify-center shadow-md backdrop-blur-sm border border-white/20">${idx + 1}</span>
             </div>
         `).join('') || '<p class="text-xs text-gray-300 italic">No images attached</p>';
-
-        const cleanPhone = String(order.Phone).replace(/[^0-9+]/g, '');
-        document.getElementById('btn-call').href = `tel:${cleanPhone}`;
-
-        document.getElementById('detail-modal').classList.remove('hidden');
-        
-        updateSelectColor(); 
-        initSwipeToClose();
-    }
+    
+    const cleanPhone = String(order.Phone).replace(/[^0-9+]/g, '');
+    document.getElementById('btn-call').href = `tel:${cleanPhone}`;
+    
+    document.getElementById('detail-modal').classList.remove('hidden');
+    
+    updateSelectColor();
+    initSwipeToClose();
+}
 
     function updateSelectColor() {
-        const select = document.getElementById('modal-status-select');
-        const trackingContainer = document.getElementById('tracking-input-container');
-        const steadfastBox = document.getElementById('steadfast-booking-box');
-        if (!select) return;
-        
-        const val = select.value;
-        
-        if (val === 'Shipped') trackingContainer.classList.remove('hidden');
-        else trackingContainer.classList.add('hidden');
-
-        if (val === 'Confirmed') steadfastBox.classList.remove('hidden');
-        else steadfastBox.classList.add('hidden');
-
-        select.className = "w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold outline-none mb-3 transition duration-200 ";
-        if (val === 'New' || val === 'Intake') select.className += '!bg-orange-100 !text-orange-800 !border-orange-300';
-        else if (val === 'Confirmed') select.className += '!bg-blue-100 !text-blue-800 !border-blue-300';
-        else if (val === 'Shipped') select.className += '!bg-purple-100 !text-purple-800 !border-purple-300';
-        else if (val === 'Delivered') select.className += '!bg-green-100 !text-green-800 !border-green-300';
-        else if (val === 'Failed Delivery' || val === 'Canceled') select.className += '!bg-red-100 !text-red-800 !border-red-300';
+    const select = document.getElementById('modal-status-select');
+    const trackingContainer = document.getElementById('tracking-input-container');
+    const steadfastBox = document.getElementById('steadfast-booking-box');
+    const trackingInput = document.getElementById('modal-tracking-id');
+    if (!select) return;
+    
+    const val = select.value;
+    
+    // Show tracking box if it's Shipped, OR if an ID has already been generated
+    if (val === 'Shipped' || trackingInput.value.trim() !== '') {
+        trackingContainer.classList.remove('hidden');
+    } else {
+        trackingContainer.classList.add('hidden');
     }
+    
+    if (val === 'Confirmed') steadfastBox.classList.remove('hidden');
+    else steadfastBox.classList.add('hidden');
+    
+    select.className = "w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold outline-none mb-3 transition duration-200 ";
+    if (val === 'New' || val === 'Intake') select.className += '!bg-orange-100 !text-orange-800 !border-orange-300';
+    else if (val === 'Confirmed') select.className += '!bg-blue-100 !text-blue-800 !border-blue-300';
+    else if (val === 'Shipped') select.className += '!bg-purple-100 !text-purple-800 !border-purple-300';
+    else if (val === 'Delivered') select.className += '!bg-green-100 !text-green-800 !border-green-300';
+    else if (val === 'Failed Delivery' || val === 'Canceled') select.className += '!bg-red-100 !text-red-800 !border-red-300';
+}
 
     function closeDetails(event) {
         if(event && event.target.id !== 'detail-modal') return;
