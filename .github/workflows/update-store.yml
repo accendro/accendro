@@ -1,10 +1,22 @@
-name: Update Store Data
+name: Update Store Data & Inject Pixel
 
-# This allows you to run the robot manually from the GitHub Actions tab
+# ---------------------------------------------------------
+# THE 3 WAYS THIS ROBOT WAKES UP:
+# ---------------------------------------------------------
 on:
+  # 1. Runs manually when you click the button in GitHub
   workflow_dispatch:
 
-# CRITICAL: This gives the robot permission to push the updated JSON file to your repo
+  # 2. Wakes up automatically if you upload/change HTML files or global.js
+  push:
+    paths:
+      - '**/*.html'
+      - 'global.js'
+
+  # 3. Scheduled to run every day at 1:00 AM Dhaka time (19:00 UTC)
+  schedule:
+    - cron: '0 19 * * *'
+
 permissions:
   contents: write 
 
@@ -21,14 +33,19 @@ jobs:
         with:
           node-version: '20'
           
-      - name: 🚀 Run Fetch Script
+      - name: 🚀 Run Fetch Script (Google Sheets)
         run: node fetch-data.js
+
+      - name: 🛠️ Hardcode Meta Pixel into HTML
+        run: node inject-pixel.js
         
       - name: 💾 Commit and Push changes
         run: |
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-          git add products.json
-          # The || echo part prevents the action from failing if you run it but no prices actually changed
-          git commit -m "🤖 Auto-updated products database" || echo "No changes to commit"
+          
+          # Notice we are adding BOTH products.json and all updated .html files now!
+          git add products.json *.html
+          
+          git commit -m "🤖 Auto-updated products database & Meta Pixel" || echo "No changes to commit"
           git push
