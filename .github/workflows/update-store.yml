@@ -7,8 +7,6 @@ on:
       - '**/*.html'
       - '!admin.html'       # <--- EXCEPTION 1: Do not wake the robot for admin.html
       - 'global.js'
-  schedule:
-    - cron: '0 19 * * *'
 
 permissions:
   contents: write 
