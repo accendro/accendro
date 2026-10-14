@@ -3,12 +3,22 @@
 const STORE_ID = "Accendro_";
 // ==========================================
 
+// Before order ID prefix to identify each store seeing order id
+const Orders_Prefix = "Acc_"; 
 
 // 👉 IMPORTANT: Paste your exact Google Apps Script URL here!
         const API_URL = "https://script.google.com/macros/s/AKfycbxqLSwta_gqOlZxYyKC1jjg4kd6CguDnj3UKPt10QAI2t9XHLcml3Ikqx8m9A-X08Wd2g/exec";
   
   
-  
+// ==========================================
+// 💳 PAYMENT & BKASH OFFERS
+// Leave BKASH_NUMBER empty ("") to only show Cash On Delivery.
+// Leave a DISCOUNT empty ("") or 0 to hide that specific offer.
+// ==========================================
+const BKASH_NUMBER = "01897292427";
+const DISCOUNT_PARTIAL = "20";
+const DISCOUNT_FULL = "30";
+// ==========================================
 
 // 🎯 META PIXEL SETTINGS
 const META_PIXEL_ID = "1118804886391852";
@@ -24,11 +34,6 @@ const FEE_INSIDE = 100;
 
 const LOC_OUTSIDE = "Outside Dhaka";
 const FEE_OUTSIDE = 150;
-
-
-const BKASH_NUMBER = "01712987654";
-const DISCOUNT_PARTIAL = "20";
-const DISCOUNT_FULL = "30";
 
 
 // ==========================================
@@ -121,10 +126,6 @@ async function getProducts() {
         return []; 
     }
 }
-
-
-
-
 
 
 

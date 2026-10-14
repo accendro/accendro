@@ -46,9 +46,10 @@
     <!-- HEADER & SEARCH -->
     <div class="bg-white shadow-sm sticky top-0 z-20">
         <div class="p-4 pb-2 flex justify-between items-center">
-            <h1 class="font-bold text-lg text-orange-600 flex items-center gap-2">
-                <i class="ri-dashboard-2-line"></i> Orders
-            </h1>
+           <h1 class="font-bold text-lg text-orange-600 flex items-center gap-2">
+              <img src="Images/AccendroLogo.png" alt="Logo" class="h-7 w-auto object-contain drop-shadow-sm">  
+              <span class="truncate block">Orders</span>
+              </h1>
             <button id="refresh-btn" onclick="fetchData(true)" class="text-gray-500 hover:text-orange-500 flex items-center gap-1 text-sm bg-gray-100 px-3 py-1 rounded-full transition shadow-sm border border-gray-200 active:scale-95">
                 <i id="refresh-icon" class="ri-refresh-line"></i> <span id="refresh-text">Sync Updates</span>
             </button>
@@ -266,6 +267,7 @@
         const srt = document.getElementById('sort-select');
         if (grp) grp.value = currentGroupBy;
         if (srt) srt.value = currentSortBy;
+        
         
         if (adminPassword) {
             const cachedData = localStorage.getItem(STORE_ID + CACHE_KEY);
