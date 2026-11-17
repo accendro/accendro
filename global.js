@@ -86,28 +86,97 @@ async function getProducts() {
             // Image handling
             if (typeof p.images === 'string') p.images = p.images.split(',').map(i => i.trim()).filter(i => i !== "");
             else if (!p.images || !Array.isArray(p.images) || p.images.length === 0) p.images =["https://via.placeholder.com/400?text=No+Image"];
+            if (p.images.length === 0) p.images =["https://via.placeholder.com/400?text=No+Image"];
             
-            // Sizes & Tags & Keywords
-            if (typeof p.sizes === 'string') p.sizes = p.sizes.split(',').map(s => s.trim()).filter(s => s !== "");
-            else p.sizes =[];
-            
+            // Tags & Keywords
             if (typeof p.tags === 'string') p.tags = p.tags.split(',').map(t => t.trim()).filter(t => t !== "");
-            else p.tags =[];
+            else if (!Array.isArray(p.tags)) p.tags =[];
             
             if (typeof p.keywords === 'string') p.keywords = p.keywords.split(',').map(k => k.trim().toLowerCase()).filter(k => k !== "");
-            else p.keywords =[];
-            
-            // Variant Prices & Colors
-            if (typeof p.colors === 'string' && p.colors.trim() !== "") {
-                p.colors = p.colors.split(',').map(c => {
+            else if (!Array.isArray(p.keywords)) p.keywords =[];
+
+            // Helper: Parse comma-separated colors
+            const parseColorList = (str) => {
+                if (!str || typeof str !== 'string' || str.trim() === "") return [];
+                return str.split(',').map(c => {
                     let parts = c.split('|');
                     let colorName = parts[0] ? parts[0].trim() : "Default";
                     let imgUrl = parts[1] ? parts[1].trim() : "";
                     let colorPrice = parts[2] && !isNaN(parseInt(parts[2])) ? parseInt(parts[2].trim()) : null;
                     if (imgUrl.startsWith("urlhttp")) imgUrl = imgUrl.replace("urlhttp", "http");
+                    if (!imgUrl) imgUrl = p.images[0];
                     return { name: colorName, img: imgUrl, price: colorPrice };
-                });
-            } else { p.colors =[]; }
+                }).filter(c => c.name !== "");
+            };
+
+            // Helper: Parse comma-separated sizes
+            const parseSizeList = (str) => {
+                if (!str || typeof str !== 'string' || str.trim() === "") return [];
+                return str.split(',').map(s => s.trim()).filter(s => s !== "");
+            };
+
+            // Helper: Safely extract "ItemName: values" without breaking "https://"
+            const extractLabelAndValues = (groupStr) => {
+                const match = groupStr.trim().match(/^([^:,|]+):\s*(.*)$/);
+                if (match && !['http', 'https'].includes(match[1].trim().toLowerCase())) {
+                    return { label: match[1].trim(), values: match[2].trim() };
+                }
+                return { label: "", values: groupStr.trim() };
+            };
+
+            const rawSizes = (p.sizes !== undefined && p.sizes !== null && !Array.isArray(p.sizes)) ? String(p.sizes).trim() : "";
+            const rawColors = (p.colors !== undefined && p.colors !== null && !Array.isArray(p.colors)) ? String(p.colors).trim() : "";
+
+            const sizeGroups = rawSizes ? rawSizes.split(/[;\r\n]+/).map(g => g.trim()).filter(g => g !== "") : [];
+            const colorGroups = rawColors ? rawColors.split(/[;\r\n]+/).map(g => g.trim()).filter(g => g !== "") : [];
+
+            const comboTag = p.tags.find(t => t.toLowerCase().startsWith('combo-'));
+            const comboTagCount = comboTag ? (parseInt(comboTag.split('-')[1]) || 0) : 0;
+
+            // Detect Mixed Set Combo (multiple groups separated by ';' or newline)
+            if (sizeGroups.length > 1 || colorGroups.length > 1) {
+                const setCount = Math.max(comboTagCount, sizeGroups.length, colorGroups.length);
+                const comboItems = [];
+                const allFlattenedColors = [];
+                const seenColorKeys = new Set();
+                const allFlattenedSizes = [];
+
+                for (let i = 0; i < setCount; i++) {
+                    const sGroupRaw = sizeGroups.length === 1 ? sizeGroups[0] : (sizeGroups[i] || "");
+                    const cGroupRaw = colorGroups.length === 1 ? colorGroups[0] : (colorGroups[i] || "");
+
+                    const parsedS = extractLabelAndValues(sGroupRaw);
+                    const parsedC = extractLabelAndValues(cGroupRaw);
+
+                    const itemName = parsedS.label || parsedC.label || `Item ${i + 1}`;
+                    const itemSizes = parseSizeList(parsedS.values);
+                    const itemColors = parseColorList(parsedC.values);
+
+                    itemSizes.forEach(s => { if (!allFlattenedSizes.includes(s)) allFlattenedSizes.push(s); });
+                    itemColors.forEach(c => {
+                        const key = `${c.name}|${c.img}`;
+                        if (!seenColorKeys.has(key)) {
+                            seenColorKeys.add(key);
+                            allFlattenedColors.push(c);
+                        }
+                    });
+
+                    comboItems.push({
+                        name: itemName,
+                        sizes: itemSizes,
+                        colors: itemColors,
+                        sharedColors: colorGroups.length <= 1
+                    });
+                }
+
+                p.combo_items = comboItems;
+                p.sizes = allFlattenedSizes;
+                p.colors = allFlattenedColors;
+            } else {
+                p.combo_items = null;
+                p.sizes = parseSizeList(sizeGroups.length === 1 ? extractLabelAndValues(sizeGroups[0]).values : rawSizes);
+                p.colors = parseColorList(colorGroups.length === 1 ? extractLabelAndValues(colorGroups[0]).values : rawColors);
+            }
             
             // Numbers & Booleans
             p.show_sold = (p.show_sold === "TRUE" || p.show_sold === true);

@@ -6,29 +6,7 @@
     <title>Product Details</title>
     <link rel="stylesheet" href="style.css">
     <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
-
-    
-    
-    
-    
-    
-    
-    <!-- AUTO-INJECTED META PIXEL -->
-    <script>
-    !function(f,b,e,v,n,t,s)
-    {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
-    n.callMethod.apply(n,arguments):n.queue.push(arguments)};
-    if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
-    n.queue=[];t=b.createElement(e);t.async=!0;
-    t.src=v;s=b.getElementsByTagName(e)[0];
-    s.parentNode.insertBefore(t,s)}(window, document,'script',
-    'https://connect.facebook.net/en_US/fbevents.js');
-    fbq('init', '1118804886391852');
-    fbq('track', 'PageView');
-    </script>
-    <noscript><img height="1" width="1" style="display:none" src="https://www.facebook.com/tr?id=1118804886391852&ev=PageView&noscript=1"/></noscript>
-    <!-- END AUTO-INJECTED META PIXEL -->
-    </head>
+</head>
 <body>
 <div class="top-header">
     <a href="index.html"><i class="ri-arrow-left-line menu-btn"></i></a>
@@ -158,10 +136,16 @@ async function loadDetails() {
     selectedVariant = { color: null, size: null, qty: 1 };
     currentImageIndex = 0;
 
+    // --- DETECT COMBO OR MIXED SET ---
     comboCount = 0;
     isCombo = false;
     comboSelections = [];
-    if (currentProduct.tags && currentProduct.tags.length > 0) {
+    const isMixedSet = Boolean(currentProduct.combo_items && currentProduct.combo_items.length > 1);
+
+    if (isMixedSet) {
+        comboCount = currentProduct.combo_items.length;
+        isCombo = true;
+    } else if (currentProduct.tags && currentProduct.tags.length > 0) {
         const cTag = currentProduct.tags.find(t => t.toLowerCase().startsWith('combo-'));
         if (cTag) {
             comboCount = parseInt(cTag.split('-')[1]) || 0;
@@ -177,6 +161,7 @@ async function loadDetails() {
         mainImg.onclick = () => {
             document.getElementById('fs-img').src = mainImg.src;
             document.getElementById('fs-modal').classList.add('active');
+            if (typeof updateFsIndicator === 'function') updateFsIndicator();
         };
     }
     
@@ -251,25 +236,42 @@ async function loadDetails() {
 
     if (isCombo) {
         comboSelections = Array.from({length: comboCount}, (_, i) => {
+            const setItem = isMixedSet ? currentProduct.combo_items[i] : null;
+            const itemColors = setItem ? setItem.colors : (hasColors ? currentProduct.colors : []);
+            const itemSizes = setItem ? setItem.sizes : (hasSizes ? currentProduct.sizes : []);
+            const useSharedColors = setItem ? setItem.sharedColors : true;
+
             let autoColor = null;
-            if (hasColors) {
-                autoColor = currentProduct.colors[i % currentProduct.colors.length];
+            if (itemColors.length > 0) {
+                autoColor = useSharedColors
+                    ? itemColors[i % itemColors.length]
+                    : itemColors[0];
             } else {
                 autoColor = { name: 'Default', img: currentProduct.images[0] };
             }
             
-            let autoSize = hasSizes ? (currentProduct.sizes.length === 1 ? currentProduct.sizes[0] : null) : 'Default';
+            let autoSize = itemSizes.length > 0
+                ? (itemSizes.length === 1 ? itemSizes[0] : null)
+                : 'Default';
+
             return { color: autoColor, size: autoSize };
         });
 
         for (let i = 0; i < comboCount; i++) {
+            const setItem = isMixedSet ? currentProduct.combo_items[i] : null;
+            const itemName = setItem ? setItem.name : `Item ${i + 1}`;
+            const itemColors = setItem ? setItem.colors : (hasColors ? currentProduct.colors : []);
+            const itemSizes = setItem ? setItem.sizes : (hasSizes ? currentProduct.sizes : []);
+            const useSharedColors = setItem ? setItem.sharedColors : true;
+            const defaultColorIdx = itemColors.length > 0 ? (useSharedColors ? (i % itemColors.length) : 0) : -1;
+
             modalHtml += `<div style="background:#ffffff; padding:15px; border-radius:8px; margin-bottom:15px; border: 1px solid #ccc; border-left: 4px solid var(--primary); box-shadow: 0 2px 5px rgba(0,0,0,0.05);">`;
-            modalHtml += `<p style="font-weight:bold; color:var(--primary); margin-bottom:10px; border-bottom:1px dashed #eee; padding-bottom:5px;">🛍️ Item ${i + 1}</p>`;
+            modalHtml += `<p style="font-weight:bold; color:var(--primary); margin-bottom:10px; border-bottom:1px dashed #eee; padding-bottom:5px;">🛍️ ${itemName}</p>`;
             
-            if (hasColors) {
+            if (itemColors.length > 0) {
                 modalHtml += `<div class="variant-section"><p class="variant-title">Color</p>`;
-                currentProduct.colors.forEach((c, cIdx) => {
-                    let isSelected = (cIdx === (i % currentProduct.colors.length)) ? 'selected' : '';
+                itemColors.forEach((c, cIdx) => {
+                    let isSelected = (cIdx === defaultColorIdx) ? 'selected' : '';
                     modalHtml += `<div class="color-option combo-color-${i} ${isSelected}" onclick="selectComboColor(this, ${cIdx}, ${i})">
                                     <img src="${c.img}" alt="${c.name}"> <span>${c.name}</span>
                                   </div>`;
@@ -277,11 +279,12 @@ async function loadDetails() {
                 modalHtml += `</div>`;
             }
             
-            if (hasSizes) {
+            if (itemSizes.length > 0) {
                 modalHtml += `<div class="variant-section"><p class="variant-title">Size</p>`;
-                currentProduct.sizes.forEach((s) => {
-                    let isSelected = (currentProduct.sizes.length === 1) ? 'selected' : '';
-                    modalHtml += `<span class="size-option combo-size-${i} ${isSelected}" onclick="selectComboSize(this, '${s}', ${i})">${s}</span>`;
+                itemSizes.forEach((s) => {
+                    let isSelected = (itemSizes.length === 1) ? 'selected' : '';
+                    let safeSize = String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+                    modalHtml += `<span class="size-option combo-size-${i} ${isSelected}" onclick="selectComboSize(this, '${safeSize}', ${i})">${s}</span>`;
                 });
                 modalHtml += `</div>`;
             }
@@ -312,7 +315,8 @@ async function loadDetails() {
             modalHtml += `<div class="variant-section"><p class="variant-title">Size</p>`;
             currentProduct.sizes.forEach((s) => {
                 let isSelected = (currentProduct.sizes.length === 1) ? 'selected' : '';
-                modalHtml += `<span class="size-option ${isSelected}" onclick="selectSize(this, '${s}')">${s}</span>`;
+                let safeSize = String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+                modalHtml += `<span class="size-option ${isSelected}" onclick="selectSize(this, '${safeSize}')">${s}</span>`;
             });
             modalHtml += `</div>`;
         } else {
@@ -437,11 +441,31 @@ function syncPriceWithImage(imgUrl) {
 
 function openModalWithColor(index) {
     openModal('buy');
+    if (isCombo) {
+        const clickedColor = currentProduct.colors[index];
+        if (!clickedColor) return;
+        const isMixedSet = Boolean(currentProduct.combo_items && currentProduct.combo_items.length > 1);
+        if (isMixedSet) {
+            for (let i = 0; i < currentProduct.combo_items.length; i++) {
+                const cIdx = currentProduct.combo_items[i].colors.findIndex(c => c.name === clickedColor.name && c.img === clickedColor.img);
+                if (cIdx !== -1) {
+                    const opts = document.querySelectorAll(`.combo-color-${i}`);
+                    if (opts[cIdx]) selectComboColor(opts[cIdx], cIdx, i);
+                }
+            }
+        } else {
+            const opts = document.querySelectorAll('.combo-color-0');
+            if (opts[index]) selectComboColor(opts[index], index, 0);
+        }
+        return;
+    }
     const modalColorOptions = document.querySelectorAll('.variant-section .color-option');
     if (modalColorOptions[index]) {
         selectColor(modalColorOptions[index], index);
     }
 }
+
+
 function toggleInlineSearch() {
     const icons = document.getElementById('header-icons-normal');
     const searchBox = document.getElementById('header-search-input-box');
@@ -532,12 +556,19 @@ function selectSize(el, size) {
     el.classList.add('selected');
     selectedVariant.size = size;
 }
+
 function selectComboColor(el, colorIndex, itemIndex) {
     document.querySelectorAll(`.combo-color-${itemIndex}`).forEach(c => c.classList.remove('selected'));
     el.classList.add('selected');
-    comboSelections[itemIndex].color = currentProduct.colors[colorIndex];
-    syncPriceWithImage(currentProduct.colors[colorIndex].img);
+    const isMixedSet = Boolean(currentProduct && currentProduct.combo_items && currentProduct.combo_items.length > 1);
+    const chosenColor = isMixedSet ?
+        currentProduct.combo_items[itemIndex].colors[colorIndex] :
+        currentProduct.colors[colorIndex];
+    if (!chosenColor) return;
+    comboSelections[itemIndex].color = chosenColor;
+    syncPriceWithImage(chosenColor.img);
 }
+
 function selectComboSize(el, sizeStr, itemIndex) {
     document.querySelectorAll(`.combo-size-${itemIndex}`).forEach(s => s.classList.remove('selected'));
     el.classList.add('selected');
@@ -643,12 +674,20 @@ function renderSimilarProducts(allProds, currProd) {
 function confirmSelection() {
     let finalVariantToCart = selectedVariant;
     if (isCombo) {
+        const isMixedSet = Boolean(currentProduct.combo_items && currentProduct.combo_items.length > 1);
         for (let i = 0; i < comboCount; i++) {
-            if (!comboSelections[i].color) { showToast(`Please select a Color for Item ${i+1}`, false); return; }
-            if (!comboSelections[i].size) { showToast(`Please select a Size for Item ${i+1}`, false); return; }
+            const label = (isMixedSet && currentProduct.combo_items[i]) ? currentProduct.combo_items[i].name : `Item ${i+1}`;
+            if (!comboSelections[i] || !comboSelections[i].color) { showToast(`Please select a Color for ${label}`, false); return; }
+            if (!comboSelections[i].size) { showToast(`Please select a Size for ${label}`, false); return; }
         }
-        let mergedColorStr = comboSelections.map((c, i) => `[${i+1}] ${c.color.name}`).join(', ');
-        let mergedSizeStr = comboSelections.map((c, i) => `[${i+1}] ${c.size}`).join(', ');
+        let mergedColorStr = comboSelections.map((c, i) => {
+            const label = (isMixedSet && currentProduct.combo_items[i]) ? currentProduct.combo_items[i].name : `${i+1}`;
+            return `[${label}] ${c.color.name}`;
+        }).join(', ');
+        let mergedSizeStr = comboSelections.map((c, i) => {
+            const label = (isMixedSet && currentProduct.combo_items[i]) ? currentProduct.combo_items[i].name : `${i+1}`;
+            return `[${label}] ${c.size}`;
+        }).join(', ');
         let mergedImgsStr = comboSelections.map(c => c.color.img).join('\n');
         finalVariantToCart = {
             color: { 
@@ -668,27 +707,27 @@ function confirmSelection() {
         }
     }
     addToCart(currentProduct, finalVariantToCart);
-try {
-    if (typeof fbq === 'function') {
-        fbq('track', 'AddToCart', {
-            content_name: currentProduct.name,
-            content_ids: [currentProduct.id],
-            content_type: 'product',
-            value: currentProduct.price * finalVariantToCart.qty,
-            currency: 'BDT'
-        });
+    try {
+        if (typeof fbq === 'function') {
+            fbq('track', 'AddToCart', {
+                content_name: currentProduct.name,
+                content_ids: [currentProduct.id],
+                content_type: 'product',
+                value: currentProduct.price * finalVariantToCart.qty,
+                currency: 'BDT'
+            });
+        }
+    } catch (e) {
+        console.warn("Pixel tracking blocked by browser.");
     }
-} catch (e) {
-    console.warn("Pixel tracking blocked by browser.");
-}
-if (currentAction === 'buy') {
-    setTimeout(() => {
-        window.location.href = 'checkout.html';
-    }, 400);
-} else {
-    showToast("Added to Cart Successfully!", true);
-    closeModal();
-}
+    if (currentAction === 'buy') {
+        setTimeout(() => {
+            window.location.href = 'checkout.html';
+        }, 400);
+    } else {
+        showToast("Added to Cart Successfully!", true);
+        closeModal();
+    }
 }
 // --- FULLSCREEN MODAL SWIPE CONTROLS ---
 let fsTouchstartX = 0;
